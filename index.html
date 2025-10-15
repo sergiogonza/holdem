@@ -1,13 +1,13 @@
 <!doctype html>
-<html lang="es">
+<html lang="cs">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Poker Texas Hold'em - Práctica y Probabilidades</title>
+  <title>Texas Hold'em Poker – Trénink se sázením a strategiemi</title>
   <style>
     :root{--bg:#0b2b18;--card:#ffffff;--panel:#0f3b26;--accent:#e2b44b}
     body{margin:0;font-family:Inter, Roboto, Arial, sans-serif;background:linear-gradient(180deg,#04221a 0%, #071a13 100%);color:#e6f3ea}
-    .app{display:grid;grid-template-columns:260px 1fr 320px;grid-template-rows:80px 1fr;gap:12px;height:100vh;padding:12px}
+    .app{display:grid;grid-template-columns:300px 1fr 360px;grid-template-rows:90px 1fr;gap:12px;height:100vh;padding:12px}
     header{grid-column:1/4;background:rgba(255,255,255,0.03);border-radius:12px;padding:12px;display:flex;align-items:center;gap:16px}
     h1{font-size:18px;margin:0}
     .left, .right, main{background:rgba(255,255,255,0.03);border-radius:12px;padding:12px;overflow:auto}
@@ -22,364 +22,340 @@
     button{background:var(--accent);border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:700}
     button.secondary{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--accent)}
     .chips-bar{display:flex;align-items:center;gap:8px}
-    .chips{display:flex;gap:6px}
     .chip{background:#222;padding:8px 12px;border-radius:999px}
-    .history-item{padding:8px;border-radius:8px;margin-bottom:8px;background:rgba(0,0,0,0.2)}
+    .history-item{padding:8px;border-radius:8px;margin-bottom:8px;background:rgba(0,0,0,0.14)}
     .rankings{display:flex;flex-direction:column;gap:6px}
     .prob-table{width:100%;border-collapse:collapse}
     .prob-table th,.prob-table td{padding:6px;text-align:left;border-bottom:1px dashed rgba(255,255,255,0.04)}
     .desc{font-size:13px;line-height:1.4;color:#cfe9d2}
     .small{font-size:12px;color:#9ccaa9}
     .center{display:flex;flex-direction:column;align-items:center}
+    .role-badge{background:rgba(226,180,75,0.15);padding:6px 10px;border-radius:8px;color:var(--accent);font-weight:700;margin-bottom:8px}
+    #tips{margin-top:10px;padding:10px;border-radius:8px;background:rgba(0,0,0,0.12);font-size:13px}
   </style>
 </head>
 <body>
   <div class="app">
     <header>
       <div style="flex:1">
-        <h1>Poker Texas Hold'em — Entrenador visual</h1>
-        <div class="small">Objetivo: formar la mejor póker de 5 cartas usando tus 2 cartas y las 5 comunitarias.</div>
+        <h1>Texas Hold'em — Trénink strategií</h1>
+        <div class="small">Cíl: vytvořit nejlepší 5-karetní kombinaci a učit se rozhodovat podle pravděpodobností a stylu soupeře.</div>
       </div>
       <div class="controls">
-        <button id="dealBtn">Repartir / Nueva mano</button>
-        <button id="nextStageBtn" class="secondary">Siguiente etapa (Flop/Turn/River)</button>
+        <button id="dealBtn">Rozdat / Nová hra</button>
+        <button id="nextStageBtn" class="secondary">Další fáze (Flop/Turn/River)</button>
         <div class="chips-bar">
-          <div class="small">Apuesta:</div>
-          <input id="betRange" type="range" min="0" max="1000" value="50">
+          <div class="small">Sázka:</div>
+          <input id="betRange" type="range" min="10" max="500" value="50">
           <div class="chip" id="betDisplay">50</div>
         </div>
       </div>
     </header>
 
     <aside class="left">
-      <h3>Historial de manos</h3>
+      <h3>Historie her</h3>
       <div id="history" style="margin-top:8px"></div>
     </aside>
 
     <main>
       <div class="center">
-        <div class="small desc">Mano del oponente (oculta) — la IA jugará y al showdown verás su mano.</div>
-        <div class="hand" style="margin-top:12px">
-          <div id="botCards" class="hand"></div>
-        </div>
+        <div id="botRole" class="role-badge">Role soupeře: —</div>
+        <div class="small desc">Ruka soupeře (skrytá do showdownu)</div>
+        <div id="botCards" class="hand" style="margin-top:8px"></div>
       </div>
 
       <div class="center">
-        <div class="small desc">Cartas de la mesa</div>
-        <div id="board" class="board" style="margin-top:12px"></div>
+        <div class="small desc">Společné karty</div>
+        <div id="board" class="board" style="margin-top:8px"></div>
       </div>
 
       <div class="center">
-        <div class="small desc">Tu mano</div>
-        <div id="playerCards" class="hand" style="margin-top:12px"></div>
+        <div class="small desc">Vaše karty</div>
+        <div id="playerCards" class="hand" style="margin-top:8px"></div>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:8px">
+        <button id="betBtn">Vsadit / Navýšit</button>
+        <button id="callBtn" class="secondary">Dorovnat (Call)</button>
+        <button id="foldBtn" class="secondary">Složit (Fold)</button>
       </div>
 
       <div style="display:flex;gap:12px;align-items:center;justify-content:center;margin-top:8px">
         <div>
-          <div class="small">Probabilidad tuya</div>
+          <div class="small">Vaše pravděpodobnost</div>
           <div id="equityPlayer" class="small">—</div>
         </div>
         <div>
-          <div class="small">Probabilidad oponente</div>
+          <div class="small">Pravděpodobnost soupeře</div>
           <div id="equityBot" class="small">—</div>
         </div>
         <div>
-          <div class="small">Resultado estimado</div>
+          <div class="small">Odhad výsledku</div>
           <div id="resultText" class="small">—</div>
         </div>
       </div>
 
+      <div id="tips" class="small">Tipy budou zde—statické i dynamické vysvětlení taktik a proč soupeř jedná tak, jak jedná.</div>
     </main>
 
     <aside class="right">
-      <h3>Manos de póker (ordenadas)</h3>
+      <h3>Pořadí pokerových kombinací</h3>
       <div class="rankings" style="margin-top:8px">
-        <div>1. Escalera de color (Straight flush)</div>
-        <div>2. Póker (Four of a kind)</div>
-        <div>3. Full house (Full)</div>
-        <div>4. Color (Flush)</div>
-        <div>5. Escalera (Straight)</div>
-        <div>6. Trío (Three of a kind)</div>
-        <div>7. Doble pareja (Two pair)</div>
-        <div>8. Pareja (One pair)</div>
-        <div>9. Carta alta (High card)</div>
+        <div>1. Postupka v barvě (Straight Flush)</div>
+        <div>2. Čtyři stejné (Four of a kind)</div>
+        <div>3. Full house</div>
+        <div>4. Barva (Flush)</div>
+        <div>5. Postupka (Straight)</div>
+        <div>6. Trojice (Three of a kind)</div>
+        <div>7. Dva páry (Two pair)</div>
+        <div>8. Pár (One pair)</div>
+        <div>9. Vysoká karta (High card)</div>
       </div>
 
-      <h3 style="margin-top:12px">Probabilidades y desgloses</h3>
-      <div class="small" style="margin-top:6px">Se calcula por simulación Monte Carlo — actualiza cada vez que se reparten cartas.</div>
-      <table class="prob-table" style="margin-top:8px">
-        <thead><tr><th>Evento</th><th>%</th></tr></thead>
+      <h3 style="margin-top:12px">Taktiky podle stylu a sázky</h3>
+      <div class="desc">
+        <p><strong>Aggresivní hráč (Bluffer):</strong> často zvyšuje sázky, i když nemá silnou kombinaci — cílem je využít strach soupeře. Reagujte volně, ale trestejte bluffy, když máte silnou kombinaci.</p>
+        <p><strong>Konservativní hráč:</strong> vsází jen s vysokou pravděpodobností. Pokud soupeř vsadí velkou část banku, často má dobrou ruku — zvažte složení.</p>
+        <p><strong>Sagazní (balanced):</strong> mixuje agresi a pasivitu; těžké číst. Hledejte vzorce v sázení, snažte se hodnotit velikost sázky vůči pravděpodobnosti.</p>
+        <p><strong>Analytický hráč:</strong> rozhoduje podle equity a outs. Pokud soupeř jedná konzistentně s hodnotami, můžete ho přinutit chybovat špatnými over-bet shoves.</p>
+      </div>
+
+      <h3 style="margin-top:12px">Poker jako šachy — teorie tahu a protitahu</h3>
+      <div class="desc">
+        <p>Poker je hra s neúplnou informací, podobná šachu v tom, že plánujete několik kroků dopředu. Musíte kombinovat matematiku (pravděpodobnosti) a psychologie (čtení soupeře).</p>
+        <p><strong>Čtyřkvadrantová teorie rozhodování:</strong> rozdělíme akce podle rizika (nízké/vysoké) a zisku (nízký/vysoký):</p>
+        <ul>
+          <li>Nízké riziko / vysoký zisk: ideální — agresivně vsadit.</li>
+          <li>Vysoké riziko / vysoký zisk: záleží na informacích — často vyžaduje dobrou read.</li>
+          <li>Nízké riziko / nízký zisk: obvykle check nebo malý bet.</li>
+          <li>Vysoké riziko / nízký zisk: obvykle fold nebo vyčkat na lepší příležitost.</li>
+        </ul>
+        <p>Tato mentalita pomůže rozhodovat, kdy farblovat, kdy value-betovat a kdy se stáhnout.</p>
+      </div>
+
+      <h3 style="margin-top:12px">Možné kombinace soupeře</h3>
+      <table class="prob-table">
+        <thead><tr><th>Kombinace</th><th>%</th></tr></thead>
         <tbody id="probBody"></tbody>
       </table>
-
-      <h3 style="margin-top:12px">Narrativa rápida</h3>
-      <div class="desc">En Texas Hold'em cada jugador recibe 2 cartas privadas. Luego se colocan hasta 5 cartas comunitarias en la mesa (flop: 3, turn: 4ª, river: 5ª). La mejor mano de 5 cartas que se pueda construir con cualquier combinación de tus cartas privadas y las comunitarias gana. Aquí el bot reparte y puedes ver tus probabilidades y el historial para aprender.</div>
     </aside>
   </div>
 
 <script>
-// --- UTILIDADES DE CARTAS ---
-const SUITS = ['♠','♥','♦','♣']
-const RANKS = ['2','3','4','5','6','7','8','9','T','J','Q','K','A']
-function makeDeck(){
-  const d=[]
-  for(let s=0;s<4;s++)for(let r=0;r<13;r++)d.push({rank:RANKS[r],suit:SUITS[s],code:RANKS[r]+SUITS[s]})
-  return d
-}
-function cardStr(c){return c?c.code:' '}
-function draw(deck,n){
-  const out=[]
-  for(let i=0;i<n;i++){
-    const idx=Math.floor(Math.random()*deck.length)
-    out.push(deck.splice(idx,1)[0])
-  }
-  return out
-}
+// ---------- Základní utilities ----------
+const SUITS=['♠','♥','♦','♣']
+const RANKS=['2','3','4','5','6','7','8','9','T','J','Q','K','A']
+const el=id=>document.getElementById(id)
+function makeDeck(){const d=[];for(const s of SUITS)for(const r of RANKS)d.push({rank:r,suit:s,code:r+s});return d}
+function draw(deck,n){const out=[];for(let i=0;i<n;i++){const idx=Math.floor(Math.random()*deck.length);out.push(deck.splice(idx,1)[0])}return out}
+function renderCard(c,back=false){const div=document.createElement('div');div.className='card'+(back?' back':'');div.textContent=back?'🂠':(c.rank+c.suit);return div}
 
-// --- EVALUADOR SIMPLE DE MANOS (7->best 5 ranking) ---
-// Devuelve objeto {type,rankValue,desc} mayor rankValue gana
+// ---------- Hodnocení ruky (stejné jako dříve) ----------
 function evaluateHand(cards){
-  // cards: array of card objects (2..7..)
-  // convert ranks to numbers 2..14
-  const rankToNum = r=> RANKS.indexOf(r)+2
-  const counts = {}
-  const suits = {}
-  const ranksArr = []
-  for(const c of cards){
-    const n=rankToNum(c.rank)
-    counts[n]=(counts[n]||0)+1
-    suits[c.suit]=(suits[c.suit]||0)+1
-    ranksArr.push(n)
-  }
-  ranksArr.sort((a,b)=>b-a)
-  // unique ranks desc
-  const uniq = [...new Set(ranksArr)].sort((a,b)=>b-a)
-  // check flush
-  let flushSuit = null
-  for(const s in suits) if(suits[s]>=5) flushSuit=s
-  let flushCards = []
-  if(flushSuit){ flushCards = cards.filter(c=>c.suit===flushSuit).map(c=>rankToNum(c.rank)).sort((a,b)=>b-a) }
-  // check straight (including wheel A-2-3-4-5)
-  function getStraight(ranks){
-    const set=new Set(ranks)
-    // add ace low
-    if(set.has(14)) set.add(1)
-    const sorted=[...set].sort((a,b)=>b-a)
-    let best=[]
-    let cur=[sorted[0]]
-    for(let i=1;i<sorted.length;i++){
-      if(sorted[i]===sorted[i-1]-1) cur.push(sorted[i])
-      else cur=[sorted[i]]
-      if(cur.length>best.length) best=cur.slice()
-    }
-    return best.length>=5?best.slice(0,5):[]
-  }
-  const straight = getStraight(uniq)
-  const straightFlush = flushCards.length?getStraight(flushCards):[]
-
-  // counts frequency array
-  const freq = {} // freq -> ranks
-  for(const r in counts){
-    const k=counts[r]
-    if(!freq[k])freq[k]=[]
-    freq[k].push(Number(r))
-  }
-  for(const k in freq) freq[k].sort((a,b)=>b-a)
-
-  // Determine hand type
-  // order: straight flush, four, full, flush, straight, three, two pair, pair, high card
-  if(straightFlush.length>=5){
-    return {type:8,rankValue:8e6 + straightFlush[0],desc:'Escalera de color '+straightFlush.join('-')}
-  }
-  if(freq[4] && freq[4].length){
-    const four = freq[4][0]
-    const kick = uniq.filter(x=>x!==four)[0]
-    return {type:7,rankValue:7e6 + four*15 + kick,desc:'Póker: '+four}
-  }
-  if((freq[3] && freq[3].length) && ((freq[2] && freq[2].length) || freq[3].length>1)){
-    // full
-    const trips = freq[3].slice().sort((a,b)=>b-a)
-    const pair = (freq[2] && freq[2].length)?freq[2][0]:(trips.length>1?trips[1]:0)
-    return {type:6,rankValue:6e6 + trips[0]*15 + pair,desc:'Full: '+trips[0]+' sobre '+pair}
-  }
-  if(flushSuit){
-    return {type:5,rankValue:5e6 + flushCards[0]*15 + (flushCards[1]||0),desc:'Color: '+flushCards.slice(0,5).join('-')}
-  }
-  if(straight.length>=5){
-    return {type:4,rankValue:4e6 + straight[0],desc:'Escalera: '+straight.join('-')}
-  }
-  if(freq[3] && freq[3].length){
-    const trips = freq[3][0]
-    const kickers = uniq.filter(x=>x!==trips).slice(0,2)
-    return {type:3,rankValue:3e6 + trips*225 + kickers[0]*15 + (kickers[1]||0),desc:'Trío: '+trips}
-  }
-  if(freq[2] && freq[2].length>=2){
-    const pairs = freq[2].slice().sort((a,b)=>b-a)
-    const kicker = uniq.filter(x=>x!==pairs[0] && x!==pairs[1])[0]
-    return {type:2,rankValue:2e6 + pairs[0]*225 + pairs[1]*15 + (kicker||0),desc:'Doble pareja: '+pairs[0]+' y '+pairs[1]}
-  }
-  if(freq[2] && freq[2].length===1){
-    const p = freq[2][0]
-    const kicks = uniq.filter(x=>x!==p).slice(0,3)
-    return {type:1,rankValue:1e6 + p*3375 + kicks[0]*225 + (kicks[1]||0)*15 + (kicks[2]||0),desc:'Pareja: '+p}
-  }
-  // high card
-  const top = uniq.slice(0,5)
-  return {type:0,rankValue:top[0]*759375 + (top[1]||0)*58320 + (top[2]||0)*4860 + (top[3]||0)*405 + (top[4]||0),desc:'Carta alta: '+top.join('-')}
+  const rankToNum=r=>RANKS.indexOf(r)+2
+  const counts={},suits={},ranks=[]
+  for(const c of cards){const n=rankToNum(c.rank);counts[n]=(counts[n]||0)+1;suits[c.suit]=(suits[c.suit]||0)+1;ranks.push(n)}
+  ranks.sort((a,b)=>b-a)
+  const uniq=[...new Set(ranks)].sort((a,b)=>b-a)
+  let flushSuit=null;for(const s in suits)if(suits[s]>=5)flushSuit=s
+  let flushCards=[];if(flushSuit)flushCards=cards.filter(c=>c.suit===flushSuit).map(c=>rankToNum(c.rank)).sort((a,b)=>b-a)
+  function getStraight(r){const set=new Set(r);if(set.has(14))set.add(1);const arr=[...set].sort((a,b)=>b-a);let best=[],cur=[arr[0]];for(let i=1;i<arr.length;i++){if(arr[i]===arr[i-1]-1)cur.push(arr[i]);else cur=[arr[i]];if(cur.length>best.length)best=cur.slice()}return best.length>=5?best.slice(0,5):[]}
+  const straight=getStraight(uniq)
+  const straightFlush=flushCards.length?getStraight(flushCards):[]
+  const freq={}
+  for(const r in counts){const k=counts[r];if(!freq[k])freq[k]=[];freq[k].push(Number(r))}
+  for(const k in freq)freq[k].sort((a,b)=>b-a)
+  if(straightFlush.length>=5)return{type:8,rankValue:8e6+straightFlush[0],desc:'Postupka v barvě'}
+  if(freq[4])return{type:7,rankValue:7e6+freq[4][0],desc:'Čtyři stejné'}
+  if(freq[3]&&(freq[2]||freq[3].length>1))return{type:6,rankValue:6e6+freq[3][0],desc:'Full house'}
+  if(flushSuit)return{type:5,rankValue:5e6+flushCards[0],desc:'Barva'}
+  if(straight.length>=5)return{type:4,rankValue:4e6+straight[0],desc:'Postupka'}
+  if(freq[3])return{type:3,rankValue:3e6+freq[3][0],desc:'Trojice'}
+  if(freq[2]&&freq[2].length>=2)return{type:2,rankValue:2e6+freq[2][0],desc:'Dva páry'}
+  if(freq[2])return{type:1,rankValue:1e6+freq[2][0],desc:'Pár'}
+  return{type:0,rankValue:uniq[0]||0,desc:'Vysoká karta'}
 }
+function compareHands(a,b){const A=evaluateHand(a),B=evaluateHand(b);return A.rankValue>B.rankValue?1:(A.rankValue<B.rankValue?-1:0)}
 
-function compareHands(aCards,bCards){
-  const a=evaluateHand(aCards)
-  const b=evaluateHand(bCards)
-  if(a.rankValue>b.rankValue)return 1
-  if(a.rankValue<b.rankValue)return -1
-  return 0
-}
-
-// --- MONTE CARLO PARA PROBABILIDADES ---
-function monteCarloEquity(playerCards,board,iterations=2000){
+// ---------- Monte Carlo pro equity a distribuce soupeře ----------
+function monteCarlo(player,board,iter=600){
   const deck=makeDeck()
-  const used = [...playerCards,...board]
-  for(const u of used){
-    const idx=deck.findIndex(c=>c.rank===u.rank && c.suit===u.suit)
-    if(idx>=0)deck.splice(idx,1)
-  }
-  let wins=0,ties=0,losses=0
-  const oppHandTypeCounts = Array(9).fill(0)
-  for(let it=0;it<iterations;it++){
-    const d = deck.slice()
-    // pick opponent two
-    const opp = draw(d,2)
-    // complete board
-    const toDraw = 5 - board.length
-    const extra = draw(d,toDraw)
-    const fullBoard = board.concat(extra)
-    const pAll = playerCards.concat(fullBoard)
-    const oAll = opp.concat(fullBoard)
-    const res = compareHands(pAll,oAll)
-    if(res>0) wins++
-    else if(res<0) losses++
+  const used=[...player,...board]
+  for(const u of used){const i=deck.findIndex(c=>c.code===u.code);if(i>=0)deck.splice(i,1)}
+  let wins=0,losses=0,ties=0,oppDist=Array(9).fill(0)
+  for(let i=0;i<iter;i++){
+    const d=deck.slice(),opp=draw(d,2),extra=draw(d,5-board.length),fullB=board.concat(extra)
+    const res=compareHands(player.concat(fullB),opp.concat(fullB))
+    if(res>0)wins++
+    else if(res<0)losses++
     else ties++
-    const oType = evaluateHand(oAll).type
-    oppHandTypeCounts[oType]++
+    oppDist[evaluateHand(opp.concat(fullB)).type]++
   }
-  return {
-    wins: wins/iterations,
-    ties: ties/iterations,
-    losses: losses/iterations,
-    oppTypeDist: oppHandTypeCounts.map(x=>x/iterations)
-  }
+  return{wins:wins/iter,losses:losses/iter,ties:ties/iter,oppDist:oppDist.map(x=>x/iter)}
 }
 
-// --- UI Y LOGICA DEL JUEGO ---
-let state = {deck:[],player:[],bot:[],board:[],pot:0,bet:50,history:[]}
-const el = id=>document.getElementById(id)
-function renderCard(c,back=false){
-  const div=document.createElement('div')
-  div.className='card'+(back? ' back':'')
-  div.textContent = back? '🂠' : (c.rank+c.suit)
-  return div
-}
+// ---------- Bot osobnosti (role) ----------
+const BOT_ROLES=[
+  {id:'aggressive',name:'Agresivní (Bluffer)',aggr:0.9,bluff:0.45},
+  {id:'conservative',name:'Konzervativní',aggr:0.2,bluff:0.05},
+  {id:'balanced',name:'Sagazní (Balanced)',aggr:0.6,bluff:0.15},
+  {id:'analytic',name:'Analytický',aggr:0.4,bluff:0.05}
+]
+
+// ---------- Stav hry ----------
+let state={deck:[],player:[],bot:[],board:[],stage:'pre',bet:50,pot:0,currentBet:0,playerFolded:false,botRole:null,history:[]}
+
+// ---------- Pomocné funkce pro UI a logiku ----------
+function setBotRole(role){state.botRole=role;el('botRole').textContent='Role soupeře: '+role.name}
+function agregarHist(txt){const d=document.createElement('div');d.className='history-item';d.textContent=txt;el('history').prepend(d)}
+
+// ---------- Render ----------
 function render(){
-  const pc = el('playerCards'); pc.innerHTML=''
-  state.player.forEach(c=>pc.appendChild(renderCard(c,false)))
-  const bc = el('botCards'); bc.innerHTML=''
-  // hide bot cards until showdown
-  state.bot.forEach((c,i)=>{
-    const show = state.stage==='showdown'
-    bc.appendChild(renderCard(c,!show))
-  })
-  const bd = el('board'); bd.innerHTML=''
-  for(let i=0;i<5;i++){
-    const card = state.board[i]
-    bd.appendChild(card?renderCard(card,false):renderCard(null,true))
-  }
-  el('betDisplay').textContent = state.bet
-  // probabilities
+  const pc=el('playerCards');pc.innerHTML='';state.player.forEach(c=>pc.appendChild(renderCard(c)))
+  const bc=el('botCards');bc.innerHTML='';state.bot.forEach(c=>bc.appendChild(renderCard(c,state.stage!=='showdown')))
+  const bd=el('board');bd.innerHTML='';for(let i=0;i<5;i++){bd.appendChild(state.board[i]?renderCard(state.board[i]):renderCard({},true))}
+  el('betDisplay').textContent=state.bet
+  // vypočítat equity a ukázat pravděpodobnosti
   if(state.player.length===2){
-    const mc = monteCarloEquity(state.player,state.board,1200)
-    el('equityPlayer').textContent = (mc.wins*100).toFixed(1)+'% (ties '+(mc.ties*100).toFixed(1)+'%)'
-    el('equityBot').textContent = (mc.losses*100).toFixed(1)+'%'
-    el('resultText').textContent = mc.wins>mc.losses?'Favor tuyo':(mc.wins<mc.losses?'Favor oponente':'Empate probable')
-    // show breakdown table for opponent hand types
-    const probBody = el('probBody'); probBody.innerHTML=''
-    const names=['Carta alta','Pareja','Doble pareja','Trío','Escalera','Color','Full','Póker','Escalera color']
-    const dist = mc.oppTypeDist
-    for(let i=dist.length-1;i>=0;i--){
-      const tr=document.createElement('tr')
-      const td1=document.createElement('td'); td1.textContent = names[i]
-      const td2=document.createElement('td'); td2.textContent = (dist[i]*100).toFixed(2)+'%'
-      tr.appendChild(td1);tr.appendChild(td2);probBody.appendChild(tr)
-    }
+    const mc=monteCarlo(state.player,state.board,600)
+    el('equityPlayer').textContent=(mc.wins*100).toFixed(1)+'% (ties '+(mc.ties*100).toFixed(1)+'%)'
+    el('equityBot').textContent=(mc.losses*100).toFixed(1)+'%'
+    el('resultText').textContent=mc.wins>mc.losses?'Výhoda hráče':(mc.losses>mc.wins?'Výhoda soupeře':'Vyrovnané')
+    const names=['Vysoká karta','Pár','Dva páry','Trojice','Postupka','Barva','Full house','Čtyři stejné','Postupka v barvě']
+    const pb=el('probBody');pb.innerHTML=''
+    for(let i=8;i>=0;i--){const tr=document.createElement('tr');tr.innerHTML=`<td>${names[i]}</td><td>${(mc.oppDist[i]*100).toFixed(2)}%</td>`;pb.appendChild(tr)}
   }
 }
 
-function newHand(){
-  state.deck = makeDeck()
-  state.player = draw(state.deck,2)
-  state.bot = draw(state.deck,2)
-  state.board = []
+// ---------- Bot rozhodování (využívá roli, sílu ruky a equity) ----------
+function botDecision(){
+  if(state.playerFolded) return 'check'
+  const role=state.botRole
+  const botHandEval=evaluateHand(state.bot.concat(state.board))
+  const playerApprox=monteCarlo(state.player,state.board,300)
+  const botEquity=1-playerApprox.wins - playerApprox.ties/2 // aproximace
+  const strengthRank=botHandEval.type // 0..8
+  // základní heuristika
+  // agresivní role: vyšší tendence sázet i u slabších rukou (s bluffem)
+  // konzervativní: sází jen u silných
+  // sagazní: mix
+  // analytický: sázej podle equity threshold
+  let action='check'
+  const rnd=Math.random()
+  // balky bluff logic
+  const willBluff = rnd < role.bluff
+  if(role.id==='aggressive'){
+    if(strengthRank>=4 || willBluff || rnd<role.aggr) action = (rnd<0.5? 'raise':'call')
+    else action='check'
+  } else if(role.id==='conservative'){
+    if(strengthRank>=6) action = 'raise'
+    else if(strengthRank>=4 && rnd<0.3) action='call'
+    else action='check'
+  } else if(role.id==='balanced'){
+    if(strengthRank>=5 || (rnd<role.bluff)) action = (rnd<0.5?'raise':'call')
+    else action='check'
+  } else if(role.id==='analytic'){
+    if(botEquity>0.6) action='raise'
+    else if(botEquity>0.4) action='call'
+    else if(botEquity>0.2 && rnd<role.bluff) action='raise'
+    else action='check'
+  }
+  return action
+}
+
+// ---------- Hlavní průběh hry ----------
+function novaHra(){
+  state.deck=makeDeck()
+  state.player=draw(state.deck,2)
+  state.bot=draw(state.deck,2)
+  state.board=[]
   state.stage='pre'
   state.pot=0
+  state.currentBet=0
+  state.playerFolded=false
+  // při nové hře vybereme roli pro bota náhodně (můžeme ji budoucně měnit adaptivně)
+  const role=BOT_ROLES[Math.floor(Math.random()*BOT_ROLES.length)]
+  setBotRole(role)
+  agregarHist('Nová hra — soupeř je: '+role.name)
   render()
 }
 
-function nextStage(){
-  if(state.stage==='pre'){
-    // flop
-    draw(state.deck,1) // burn
-    state.board.push(...draw(state.deck,3))
-    state.stage='flop'
-  } else if(state.stage==='flop'){
-    draw(state.deck,1)
-    state.board.push(...draw(state.deck,1))
-    state.stage='turn'
-  } else if(state.stage==='turn'){
-    draw(state.deck,1)
-    state.board.push(...draw(state.deck,1))
-    state.stage='river'
-  } else if(state.stage==='river'){
-    state.stage='showdown'
-    // determine winner and save to history
-    const playerAll = state.player.concat(state.board)
-    const botAll = state.bot.concat(state.board)
-    const cmp = compareHands(playerAll,botAll)
-    const playerEval = evaluateHand(playerAll)
-    const botEval = evaluateHand(botAll)
-    const record = {
-      player:state.player.map(cardStr),
-      bot:state.bot.map(cardStr),
-      board:state.board.map(cardStr),
-      playerEval:playerEval.desc,
-      botEval:botEval.desc,
-      winner: cmp>0? 'Jugador' : (cmp<0? 'Oponente':'Empate')
-    }
-    state.history.unshift(record)
-    if(state.history.length>20) state.history.pop()
-    renderHistory()
-    // auto nuevo
-    setTimeout(()=>{ newHand(); render(); }, 3000)
-  }
+function dalsiFaze(){
+  if(state.playerFolded) return
+  if(state.stage==='pre'){draw(state.deck,1);state.board.push(...draw(state.deck,3));state.stage='flop';agregarHist('Flop: '+state.board.map(card=>card.code).join(' '))}
+  else if(state.stage==='flop'){draw(state.deck,1);state.board.push(...draw(state.deck,1));state.stage='turn';agregarHist('Turn: '+state.board.map(card=>card.code).join(' '))}
+  else if(state.stage==='turn'){draw(state.deck,1);state.board.push(...draw(state.deck,1));state.stage='river';agregarHist('River: '+state.board.map(card=>card.code).join(' '))}
+  else if(state.stage==='river'){state.stage='showdown';showdown();return}
+  // po každé fázi může bot reagovat
+  const botAct = botDecision()
+  handleBotAction(botAct)
   render()
 }
 
-function renderHistory(){
-  const h = el('history'); h.innerHTML=''
-  for(const rec of state.history){
-    const div=document.createElement('div'); div.className='history-item'
-    div.innerHTML = `<div><strong>${rec.winner}</strong> — ${rec.playerEval} vs ${rec.botEval}</div>` +
-      `<div class=small>Jugador: ${rec.player.join(' ')} | Bot: ${rec.bot.join(' ')} | Mesa: ${rec.board.join(' ')}</div>`
-    h.appendChild(div)
+function handleBotAction(act){
+  if(act==='raise'){
+    state.currentBet += state.bet
+    state.pot += state.bet
+    agregarHist('Soupeř navyšuje na '+state.currentBet)
+    el('tips').textContent = 'Soupeř zvýšil sázku — zvažte, zdali jeho role ('+state.botRole.name+') naznačuje sílu nebo bluff.'
+  } else if(act==='call'){
+    state.pot += state.currentBet
+    agregarHist('Soupeř dorovnal.')
+    el('tips').textContent = 'Soupeř dorovnal — může to být počítaná reakce na vaši akci.'
+  } else {
+    agregarHist('Soupeř checkuje/přechází.')
+    el('tips').textContent = 'Soupeř zvolil pasivní akci — někdy znamená slabost, jindy čeká na past.'
   }
 }
 
-// eventos
-el('dealBtn').addEventListener('click',()=>{ newHand(); render(); })
-el('nextStageBtn').addEventListener('click',()=>{ nextStage(); })
-el('betRange').addEventListener('input',(e)=>{ state.bet = Number(e.target.value); el('betDisplay').textContent = state.bet })
+// ---------- Akce hráče ----------
+function playerBet(){
+  state.currentBet += state.bet
+  state.pot += state.bet
+  agregarHist('Vsadíte '+state.bet+' — celkový bet: '+state.currentBet)
+  // bot reaguje
+  const botAct = botDecision()
+  handleBotAction(botAct)
+  render()
+}
+function playerCall(){
+  state.pot += state.currentBet
+  agregarHist('Dorovnáváte '+state.currentBet)
+  // pokračujeme do další fáze
+  dalsiFaze()
+}
+function playerFold(){
+  state.playerFolded=true
+  agregarHist('Skládáte — soupeř bere bank. Role soupeře: '+state.botRole.name)
+  el('tips').textContent = 'Složením se vyhnete dalším ztrátám — učte se rozpoznávat vzdělávací vzory sázení.'
+  setTimeout(()=>novaHra(),2000)
+}
 
-// iniciar
-newHand(); render();
+// ---------- Showdown ----------
+function showdown(){
+  const playerAll = state.player.concat(state.board)
+  const botAll = state.bot.concat(state.board)
+  const cmp = compareHands(playerAll,botAll)
+  const pEval = evaluateHand(playerAll)
+  const bEval = evaluateHand(botAll)
+  const winner = cmp>0? 'Hráč' : (cmp<0? 'Soupeř' : 'Remíza')
+  agregarHist('Showdown — '+winner+' vyhrává. ('+pEval.desc+' vs '+bEval.desc+')')
+  el('tips').textContent = 'Showdown odhalil: '+bEval.desc+' vs '+pEval.desc+'. Učte se z rozdílů ve sázkách a velikostech betů.'
+  state.stage='showdown'
+  render()
+  setTimeout(()=>novaHra(),3500)
+}
+
+// ---------- Inicializace událostí ----------
+el('dealBtn').onclick = ()=>novaHra()
+el('nextStageBtn').onclick = ()=>dalsiFaze()
+el('betRange').oninput = e=>{state.bet=Number(e.target.value);el('betDisplay').textContent=state.bet}
+el('betBtn').onclick = ()=>playerBet()
+el('callBtn').onclick = ()=>playerCall()
+el('foldBtn').onclick = ()=>playerFold()
+
+// ---------- Spustit hru ----------
+novaHra()
 
 </script>
 </body>
